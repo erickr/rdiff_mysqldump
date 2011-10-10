@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# Usage:
+# rdiff_mysqldump <mysqldump options>
+#
+# To restore
+# Find the version you like to restore, for example:
+# patch_20111010_202412_to_full_20111010_202238.rdiff
+# That patch is created 2011-10-10 20:24:12 against full backup
+# full_20111010_202238.sql.
+# $ rdiff patch full_20111010_202238.sql patch_20111010_202412_to_full_20111010_202238.rdiff REASSEMBLED_VERSION.sql
+#
+# Author:: Eric Krona (<eric@krona.tm>)
+# Copyright:: Copyright (c) 2011 ITOMAT AB
+# License:: GNU General Public License version 2 or later
+# 
+# This program and entire repository is free software; you can
+# redistribute it and/or modify it under the terms of the GNU 
+# General Public License as published by the Free Software 
+# Foundation; either version 2 of the License, or any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# 
+
+
+WORKDIR='.'; # Workingdir without trailing slash. This is where the backups will be kept.
+PATCHES_BETWEEN_FULL=5; # Change this, if you run this every hour and want 2 full backups/day, set it to 12 for example.
+CURRENTDUMP="$WORKDIR/current.dump";
+CURRENTPATCH="$WORKDIR/current.patch";
+LASTDUMP="$WORKDIR/last.dump";
+LASTSIGFILE="$WORKDIR/last.sig";
+# We should add dump prefixes...
+
+# Base is used to create the diff.
+LASTBASE_FILE="$WORKDIR/.rdiff_mysqldump_lastbase";
+PATCHES_SINCE_FULL_FILE="$WORKDIR/.rdiff_patches_since_full";
+
+
+if [ ! -d "$WORKDIR" ]; then
+    mkdir -p "$WORKDIR"
+fi;
+
+# We need a full mysqldump anyway each time.
+mysqldump $@ > "$CURRENTDUMP"
+
+if [ -f "$PATCHES_SINCE_FULL_FILE" ]; then
+    PATCHES_SINCE_FULL=`cat "$PATCHES_SINCE_FULL_FILE"`;
+    if [ "$PATCHES_SINCE_FULL" -ge "$PATCHES_BETWEEN_FULL" ]; then
+        rm "$PATCHES_SINCE_FULL_FILE";
+        rm "$LASTBASE_FILE";
+    fi;
+fi;
+
+
+
+if [ ! -f "$LASTBASE_FILE" ]; then
+    LASTBASE_FILENAME="full_`date +%Y%m%d_%H%M%S`"
+    rdiff signature "$CURRENTDUMP" "$WORKDIR/$LASTBASE_FILENAME.signature"
+    echo $LASTBASE_FILENAME>"$LASTBASE_FILE"
+    echo 1 > "$PATCHES_SINCE_FULL_FILE"
+    mv "$CURRENTDUMP" "$WORKDIR/$LASTBASE_FILENAME.sql"
+
+else
+    LASTBASE_FILENAME=`cat "$LASTBASE_FILE"`;
+    PATCHES_SINCE_FULL=`cat "$PATCHES_SINCE_FULL_FILE"`;
+    PATCH_FILE="$WORKDIR/patch_`date +%Y%m%d_%H%M%S`_to_$LASTBASE_FILENAME.rdiff"
+    rdiff delta "$WORKDIR/$LASTBASE_FILENAME.signature" "$WORKDIR/$LASTBASE_FILENAME.sql" "$PATCH_FILE"
+    rm "$CURRENTDUMP"
+
+    echo `expr $PATCHES_SINCE_FULL + 1`> "$PATCHES_SINCE_FULL_FILE";
+fi;
+
+

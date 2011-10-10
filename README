@@ -1,0 +1,17 @@
+Works as a wrapper around mysqldump, all options to the script are passed to mysqldump.
+
+Some settings are included in the script, like backup working directory and the number of patchfiles between full versions.
+
+This is still an early attempt, to play safe the script creates X number of patchfiles between full versions. As a worst case you can then use the last full version.
+
+
+Usage:
+rdiff_mysqldump <mysqldump options>
+
+To restore
+Find the version you like to restore, for example:
+patch_20111010_202412_to_full_20111010_202238.rdiff
+That patch is created 2011-10-10 20:24:12 against full backup
+full_20111010_202238.sql.
+$ rdiff patch full_20111010_202238.sql patch_20111010_202412_to_full_20111010_202238.rdiff REASSEMBLED_VERSION.sql
+
