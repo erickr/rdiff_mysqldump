@@ -15,3 +15,11 @@ That patch is created 2011-10-10 20:24:12 against full backup
 full_20111010_202238.sql.
 $ rdiff patch full_20111010_202238.sql patch_20111010_202412_to_full_20111010_202238.rdiff REASSEMBLED_VERSION.sql
 
+It will keep two .dot-files in the working directory:
+.rdiff_mysqldump_lastbase: Filename of the last full dump.
+.rdiff_patches_since_full: Number of patches generated against the last full dump.
+
+
+TODO:
+ - gzip last full dump when a new is done
+ - better error handling of lost .dot-files
